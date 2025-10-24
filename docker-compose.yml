@@ -1,0 +1,116 @@
+# ======================================================
+#  Gluetun Media Automation Stack (Rebuild)
+#  Uses standard ports: 8080/9117/8989/7878 + 6881
+# ======================================================
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun_rebuild
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    env_file:
+      - .env
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - OPENVPN_USER=${VPN_USER}
+      - OPENVPN_PASSWORD=${VPN_PASS}
+      - SERVER_COUNTRIES=${VPN_COUNTRY}
+      - SERVER_CATEGORIES=${VPN_CATEGORY}
+      - TZ=${TZ}
+      - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET}
+      - FIREWALL_INPUT_PORTS=${OPEN_PORTS}
+      - FIREWALL_VPN_INPUT_PORTS=${VPN_INPUT_PORTS}
+    volumes:
+      - ./gluetun/config:/gluetun
+    ports:
+      - 8080:8080     # qBittorrent WebUI
+      - 9117:9117     # Jackett WebUI
+      - 8989:8989     # Sonarr WebUI
+      - 7878:7878     # Radarr WebUI
+      - 6881:6881     # Torrent TCP
+      - 6881:6881/udp # Torrent UDP
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent_rebuild
+    network_mode: "service:gluetun"
+    depends_on: [gluetun]
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ./qbittorrent/config:/config
+      - /volume1/PlexMediaFolder/downloads:/downloads
+      - /volume1/PlexMediaFolder/downloads/complete:/complete
+    restart: unless-stopped
+
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett_rebuild
+    network_mode: "service:gluetun"
+    depends_on: [gluetun]
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./jackett/config:/config
+      - /volume1/PlexMediaFolder/downloads:/downloads
+    restart: unless-stopped
+
+  flaresolverr:
+    image: flaresolverr/flaresolverr:latest
+    container_name: flaresolverr_rebuild
+    network_mode: "service:gluetun"
+    depends_on: [gluetun]
+    env_file:
+      - .env
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr_rebuild
+    network_mode: "service:gluetun"
+    depends_on: [gluetun]
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./sonarr/config:/config
+      - /volume1/PlexMediaFolder/downloads:/downloads
+      - /volume1/PlexMediaFolder/TVShows:/tv
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr_rebuild
+    network_mode: "service:gluetun"
+    depends_on: [gluetun]
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./radarr/config:/config
+      - /volume1/PlexMediaFolder/downloads:/downloads
+      - /volume1/PlexMediaFolder/Movies:/movies
+    restart: unless-stopped

@@ -1,0 +1,6 @@
+.env
+gluetun/config/
+qbittorrent/config/
+jackett/config/
+sonarr/config/
+radarr/config/
